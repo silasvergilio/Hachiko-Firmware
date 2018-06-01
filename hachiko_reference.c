@@ -3,6 +3,7 @@
 
 void config()
 {
+
    /*Definindo a direcao de cada uma das portas, A, B, C, D, E.
 1 indica input e 0 output e a ordem funciona da seguinte maneira
 e.g.
@@ -10,6 +11,7 @@ e.g.
 set_tris_a(a7,a6,a5,a4,a3,a2,a1,a0);
 
 */
+
    set_tris_a(0b11111111);
    set_tris_b(0b00000000);
    set_tris_c(0b10111111);
@@ -18,7 +20,7 @@ set_tris_a(a7,a6,a5,a4,a3,a2,a1,a0);
 
 //Configuracao dos modulos PWM do PIC18F2431
    setup_power_pwm_pins(PWM_BOTH_ON,PWM_BOTH_ON,PWM_BOTH_ON,PWM_BOTH_ON); // Configura os 4 módulos PWM.
-   setup_power_pwm(PWM_FREE_RUN, 1, 0, POWER_PWM_PERIOD, 0, 1,30);
+  setup_power_pwm(PWM_FREE_RUN, 1, 0, POWER_PWM_PERIOD, 0, 1,30);
 
    /*
    FREE RUN eh o modo mais aconselhado para mover motores DC, outros modos podem controlar de maneiras especificas, dividindo a frequencia
@@ -36,8 +38,8 @@ set_tris_a(a7,a6,a5,a4,a3,a2,a1,a0);
 
    30 o dead time, ele altera a diferença de tempo entre o ON de um PWM e o OFF de seu complementar.
    TODO: fazer consideracao quanto a esse dead time que poderia ser possivelmente reduzido a fim de conseguir melhores reações do robo
-
-   */
+*/
+   
    setup_adc_ports(ALL_ANALOG); //Define que todas as portas que possuem conversão A/D serão usadas como conversão A/D
    setup_adc(ADC_CLOCK_INTERNAL); //Utiliza o mesmo clock do PIC para o conversor A/D
    enable_motors(); //Controla a habilitação das duas ponte H, para desabilitar uma delas, basta mudar o valor das constantes ENA e ENB
@@ -49,11 +51,10 @@ set_tris_a(a7,a6,a5,a4,a3,a2,a1,a0);
    disable_interrupts(INT_TIMER0);
    setup_timer_0(RTCC_INTERNAL|RTCC_DIV_2|RTCC_8_BIT); //Configura Timer1 e uso o pre scaler para dividir por 8;
 
-   enable_interrupts(INT_TIMER5); //Habilita interrupcao do Timer1
+  enable_interrupts(INT_TIMER5); //Habilita interrupcao do Timer1
    setup_timer_5(T5_INTERNAL|T5_DIV_BY_1);//Configura Timer5 e divide o seu clock por 1.
 
-   enable_interrupts(INT_TIMER2);
-   setup_timer_2(T2_DIV_BY_4,0xc0,2);
+ 
    
    enable_interrupts(INT_RDA); //Habilita interrupção da porta serial
 
@@ -267,7 +268,7 @@ int1 leituraAdc_linha(int16 threshold, int canal)
    {
    disable_interrupts(INT_TIMER5);
    disable_interrupts(INT_TIMER0);
-
+   overflowTimer0 = 0; //Zera o contador de overflows do timer 0.
    //Verifica se a pre estrategia ja foi utilizada
    if(!pre_estrategia_executada)
    {
@@ -340,7 +341,7 @@ int1 leituraAdc_linha(int16 threshold, int canal)
 
    if(estadoSensores == 1)
    {
-     motor1(85,'f');
+      motor1(85,'f');
       motor2(85,'b');
       primeiraBusca = 0;
       disable_interrupts(INT_TIMER5);
@@ -357,9 +358,10 @@ int1 leituraAdc_linha(int16 threshold, int canal)
       {
       switch(respostaSensores)
       {
-      case 0b00011000: estadoSensores = 2; break;
-      case 0b00010000: estadoSensores = 2; break;
-      case 0b00001000: estadoSensores = 2; break;
+      case 0b00000110: estadoSensores = 2; break;
+      case 0b00000100: estadoSensores = 2; break;
+      case 0b00001110: estadoSensores = 2; break;
+      case 0b00001100: estadoSensores = 2; break;
 
       default: estadoSensores = 1;  break;
       }
@@ -369,28 +371,22 @@ int1 leituraAdc_linha(int16 threshold, int canal)
    if(estadoSensores == 2)
    {
       //Move ambos motores para o araque
-     motor1(VELOCIDADE_ATAQUE,'f');
+      motor1(VELOCIDADE_ATAQUE,'f');
       motor2(VELOCIDADE_ATAQUE,'f');
       //Indica que o robo ja achou um adversario uma vez pelo menos
       primeiraBusca = 0;
+      overflowTimer0 = 0;
       //Desabilita interrup��es de giro do motor e de pulso de movimento
       disable_interrupts(INT_TIMER1);
       disable_interrupts(INT_TIMER0);
-      //Zera contagem de overflows do timer0
-      /*
-       timer(50);
-       if(overflowTimer0 >= overflowsAcao)
-   {
-     respostaSensores = 0b11111110;
-     overflowTimer0 = 0;
-   }
-   */
+     
       switch(respostaSensores)
       {
       case 0b00011000: estadoSensores = 2; break;
       case 0b00010000: estadoSensores = 2; break;
       case 0b00001000: estadoSensores = 2; break;
       case 0b00000000: estadoSensores = 0; break;
+
       case 0b11111110: estadoSensores = 0; respostaSensores = 0b00000000;  break;
 
       default: estadoSensores = 0; break;
@@ -403,34 +399,37 @@ int1 leituraAdc_linha(int16 threshold, int canal)
 
    if(estadoSensores == 3)
    {
-     motor1(85,'b');
-      motor2(85,'f');
+      motor1(85,'f');
+      motor2(85,'b');
       primeiraBusca = 0;
-      disable_interrupts(INT_TIMER1);
       disable_interrupts(INT_TIMER5);
-      timer(TEMPO_ESTADO_GIRO); //Configura timer 0 e define limite do overflow
+      disable_interrupts(INT_TIMER1); //Timer para estrategia inicial de busca
+      timer(TEMPO_ESTADO_GIRO);
 
+     // printf("Estado Atual: %d \r",estadoSensores);
       if(overflowTimer0 >= overflowsAcao)
       {
-      overflowTimer0 = 0;
-      estadoSensores = 0;
+        overflowTimer0 = 0;
+        estadoSensores = 0;
       }
-
       else
       {
       switch(respostaSensores)
       {
-      case 0b00011000: estadoSensores = 2; break;
-      case 0b00010000: estadoSensores = 2; break;
-      default: estadoSensores = 3;  break;
-      }
-      }
-   }
+        case 0b00000110: estadoSensores = 2; break;
+        case 0b00000100: estadoSensores = 2; break;
+        case 0b00001110: estadoSensores = 2; break;
+        case 0b00001100: estadoSensores = 2; break;
 
+        default: estadoSensores = 3;  break;
+      }
+      }
+      
+   }
 
    if(estadoSensores == 4)
    {
-     motor1(85,'f');
+      motor1(85,'f');
       motor2(85,'b');
       primeiraBusca = 0;
       disable_interrupts(INT_TIMER1);
@@ -447,16 +446,18 @@ int1 leituraAdc_linha(int16 threshold, int canal)
       {
       switch(respostaSensores)
       {
-      case 0b00011000: estadoSensores = 2; break;
-      case 0b00010000: estadoSensores = 2; break;
-      default: estadoSensores = 4;  break;
+        case 0b00000110: estadoSensores = 2; break;
+        case 0b00000100: estadoSensores = 2; break;
+        case 0b00001110: estadoSensores = 2; break;
+        case 0b00001100: estadoSensores = 2; break;
+        default: estadoSensores = 4;  break;
       }
       }
    }
 
    if(estadoSensores == 5)
    {
-     motor1(85,'f');
+      motor1(85,'f');
       motor2(85,'b');
       primeiraBusca = 0;
       disable_interrupts(INT_TIMER1);
@@ -473,9 +474,11 @@ int1 leituraAdc_linha(int16 threshold, int canal)
       {
       switch(respostaSensores)
       {
-      case 0b00011000: estadoSensores = 2; break;
-      case 0b00010000: estadoSensores = 2; break;
-      default: estadoSensores = 5;  break;
+        case 0b00000110: estadoSensores = 2; break;
+        case 0b00000100: estadoSensores = 2; break;
+        case 0b00001110: estadoSensores = 2; break;
+        case 0b00001100: estadoSensores = 2; break;
+        default: estadoSensores = 5;  break;
       }
       }
    }
@@ -672,6 +675,8 @@ void imprimeEstrategia(int buscaInicial, int buscaPadrao, int preBusca)
             case 3: printf("Busca Pulso\r"); break;
             default: printf("Estrategia Invalida!\r"); LIGA = 0; primeiro_inicio = 0; break;
          }
+  
+          printf("Lado: %c\r",lado);
 
 }
 

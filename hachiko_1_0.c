@@ -32,12 +32,25 @@ Bits = define o tamanho maximo da cada palavra da comunicacao
 #INT_RDA
 void RDA_isr(void)
 {
+  
+    //Caso o robo esteja em operacao regular.
+  if(LIGA == 1)
+  {
+   leitura_bt = getc(BT);
+
+   if(leitura_bt == 'b')
+   {
+      sair = 1;
+   }
+
+  }
+
 
   if(LIGA == 0)
   {
 
    //Captacao da palavra que define todas as estrategias do robo
-     for(i = 0; i<13;i++)
+     for(i = 0; i<14;i++)
      {
          stringEstrategia[i] = getc(BT);
      }
@@ -76,6 +89,7 @@ void RDA_isr(void)
      }
 
      charGiro[3] = '\0';
+     lado = stringEstrategia[13];
 
      VELOCIDADE_ATAQUE = atoi(charVelocidadeAtaque);
      printf("\r Velocidade De Ataque: %u \r",VELOCIDADE_ATAQUE);
@@ -96,22 +110,13 @@ void RDA_isr(void)
      primeiro_inicio = 1; //define estado de busca do robo
      //set_estrategia(leitura_bt_int); //separa as 3 estrategias a aprtir do valor enviado na string
      imprimeEstrategia(buscaInicial, buscaPadrao, preBusca); //imprime as estrategias selecionadas
-     printf("\rEscolha o lado do oponente:\r"); //pede que o operador selecione o lado para realmente ligar o robo
-     lado = getc(); //recebe o char com o lado em que o oponente se encontra
+     acionaRobo = getc(BT);
+     if(acionaRobo == 'b')
+     {
+       sair = 1;
+     }
   }
-  //Caso o robo esteja em operacao regular.
-  if(LIGA == 2)
-  {
 
-   leitura_bt = getc(BT);
-
-   if(leitura_bt == 'b')
-   {
-      LIGA = 0;
-    //  sair = 1;
-   }
-
-  }
 }
 
 //Diretivas de Interrupção Externa para os sensores de linha frontais
@@ -158,6 +163,7 @@ void TIMER1_isr (void)
     mover = 1;
        }
 }
+
 #int_TIMER5 //Timer para tempo máximo de execução de uma estratégia
 void TIMER5_isr(void)
 {
@@ -173,9 +179,9 @@ void TIMER0_isr (void)
   // printf("timer0: %Lu \r",overflowTimer0);
    set_timer0(0); //Reseta o Timer para que ele faca uma nova contagem
 }
+
 void main()
 {
-
    config(); //Executa rotina de configuracoes
 
    disable_interrupts(INT_TIMER0);
@@ -186,6 +192,7 @@ void main()
    {
     while(LIGA == 0)
     {
+
     //Desliga os motores quando o robo e desligado via celular
     motor1(0,'f');
     motor2(0,'f');
@@ -214,29 +221,27 @@ void main()
     pre_estrategia_executada = 0;
     }
 
+  
    while(LIGA == 1)
    {
-      if(primeiro_inicio == 1)
+         if(sair)
          {
-         if(primeiro_inicio == 1) primeiro_inicio = 2;
+           LIGA = 0;
+           sair = 0;
          }
-         LIGA = 2;
-   }
-
-   while(LIGA == 2)
-   {
-         disable_interrupts(INT_TIMER0);
+         enable_interrupts(INT_TIMER0);
+         enable_interrupts(INT_TIMER2);
          disable_interrupts(INT_TIMER1);
          disable_interrupts(INT_TIMER5);
         
-         if(primeiro_inicio == 2)
+         if(primeiro_inicio == 1)
          {
 
          set_timer0(0); //Inicializa o timer0
          set_timer1(0); //Inicializa o timer1
          set_timer5(0); //Inicializa o timer5
          primeiro_inicio = 0;
-      //   printf("\r Lado: %c \r",lado);
+        // printf("\r Lado: %c \r",lado);
        // delay_ms(3000);
          }
          //Liga o Led que indica que o rob� esta ligado
@@ -250,9 +255,11 @@ void main()
          output_high(LED_1);
          output_low(LED_0);
 
-         //Função Principal do Programa
-         sensores();
-
+         //Funcao Principal do Programa
+        // sensores();
+        motor1(30,'f');
+        motor2(30,'f');
+   
         
 
 } //While LIGA

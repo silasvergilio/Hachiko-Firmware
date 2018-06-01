@@ -55,8 +55,8 @@
 //#define VELOCIDADE_ATAQUE 45
 int VELOCIDADE_BUSCA_AGRESSIVA;
 #define VELOCIDADE_EVASAO 0
-#define VELOCIDADE_LINHA 100
-#define VELOCIDADE_GIRO_LINHA 50
+#define VELOCIDADE_LINHA 0
+#define VELOCIDADE_GIRO_LINHA 0
 
 //Declaracao de variaveis globais
 int velocidade_teste=20; //Velocidade padrao para testes
@@ -123,7 +123,7 @@ int buscaInicial; //variavel que indica qual a busca incial do robo
 int buscaPadrao; //variavel que indica qual a busca padrao do robo
 int preBusca; //variavel que indica qual a pre busca do robo
 
-char stringEstrategia[13];
+char stringEstrategia[14];
 char charBuscaInicial; //char recebido para indicar a busca inicial
 char charBuscaPadrao; //char recebido para indicar a busca padrao
 char charPreBusca; //char recebido para indicar qual a prebusca
@@ -131,7 +131,8 @@ char charVelocidadeAtaque[4];
 char charVelocidadeTwister[4];
 char charDebuggingLinha;
 char charGiro[4];
-
+void imprimeEstrategia(int buscaInicial, int buscaPadrao, int preBusca);
+void config();
 
 char leitura_bt; //char generico para a leitura do bluetooth
 
@@ -141,6 +142,9 @@ char lado; //variavel que indica qual lado esta o adversario
 
 int i;//Variavel de iteracao com 'for'
 int giro;
+int1 sair = 0; //variável que controla o desligamento do robô
+
+char acionaRobo; //Char que aciona o robô ou desliga antes mesmo que comece.
 
 //VARIAVEIS ALTERADAS PELA STRING ESTRATEGIAS
 int VELOCIDADE_ATAQUE = 0;
